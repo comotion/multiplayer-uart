@@ -1,0 +1,19 @@
+# One port per instance, named by its escaped /dev/serial/by-id path:
+#
+#   systemctl enable --now "$(systemd-escape --template=mpuart@.service \
+#       --path /dev/serial/by-id/usb-Altera_USB_Blaster_III_FTAL4DUL-if01-port0)"
+#
+# The unit stays up while the adapter is away, so mpuart keeps its clients
+# attached through a replug.
+
+[Unit]
+Description=mpuart on %f
+After=%i.device
+
+[Service]
+ExecStart=/usr/local/bin/mpuart serve %f
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+
+[Install]
+WantedBy=%i.device
