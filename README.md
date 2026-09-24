@@ -183,6 +183,21 @@ serves the `/dev/serial/by-id` path, and the socket keeps its original name, so
 gives that up: the daemon then waits for a name the adapter may not come back
 with.
 
+## As a service
+
+When the adapter appears, at boot or on a later plug-in, `mpuart@.service`
+starts the daemon. The instance is the escaped `/dev/serial/by-id` path:
+
+    sudo install -m 755 mpuart /usr/local/bin/
+    sudo install -m 644 mpuart@.service /etc/systemd/system/
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now "$(systemd-escape --template=mpuart@.service \
+        --path /dev/serial/by-id/usb-Altera_USB_Blaster_III_FTAL4DUL-if01-port0)"
+
+The daemon runs as root. If the adapter goes away, the daemon keeps running, and
+the clients stay attached through the replug. `systemctl reload` reopens the
+logs.
+
 ## Test
 
     ./test_mpuart.py
