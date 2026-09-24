@@ -101,6 +101,7 @@ came and went:
     -r                 read only
     --history N        replay at most N lines
     --no-history       start on a clean screen
+    --device-only      device bytes only, no notices and no [name] tags
     --echo             tag your own typing back to you
     --eol crlf|cr|lf   what Enter sends. Default crlf, as miniterm
     --raw-keys         send every key untouched
@@ -122,6 +123,25 @@ of them. The DEL key is sent as backspace, again as miniterm does.
 
 Device output is passed through untouched. Your terminal keeps its own LF to
 CRLF step, so a device that ends lines with a bare LF still starts at the left.
+
+## A device that does not speak text
+
+`mpuart` passes the device bytes through, and adds two kinds of text of its own:
+a notice about who comes and goes, and `[name] text` for what somebody types. On
+a text console they are what makes the port shareable. In a binary stream they
+land inside a frame and cost the decoder that frame.
+
+`--device-only` turns both off, so what you get is the device bytes and nothing
+else. A Rust image that logs with `defmt` reads like this:
+
+    mpuart attach -r --device-only | defmt-print -e firmware.elf stdin
+
+Ask the daemon what the port is doing instead. `mpuart list` says whether the
+device is open and who is attached, and asking is not attaching.
+
+Serve a binary device with `--history 64k`, because the default history is
+counted in lines and a binary stream has none. A binary stream is unreadable in
+the text log, so add `--raw-log FILE` and decode that file afterwards.
 
 ## Sharing
 
