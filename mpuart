@@ -168,6 +168,7 @@ class Client:
         self.hist = None              # None all, 0 none, or a line count
         self.echo = False             # see tags for your own typing
         self.notes = True
+        self.tags = True              # off for a client reading a binary protocol
         self.greeted = False
         self.query = False
         self.inbuf = bytearray()      # waiting for the hello line
@@ -298,7 +299,7 @@ class Server:
     def tag(self, c, text):
         self.log(">", "%s: %s" % (c.name, text))
         for o in list(self.clients.values()):
-            if o is c and not c.echo:
+            if not o.tags or (o is c and not c.echo):
                 continue
             body = "[%s] %s" % (c.name, text)
             if o.color:
@@ -345,6 +346,7 @@ class Server:
         c.color = opts.get("color") == "1"
         c.echo = opts.get("echo") == "1"
         c.notes = opts.get("notes", "1") == "1"
+        c.tags = opts.get("tags", "1") == "1"
         try:                          # hist is all, 0, or a line count
             h = opts.get("hist", "all")
             c.hist = None if h == "all" else max(0, int(h))
@@ -729,7 +731,8 @@ def cmd_attach(args):
     eol = EOL[args.eol]
     tty_in = sys.stdin.isatty() and not args.read_only
     say_hello(s, args.name, ro=args.read_only, color=sys.stdout.isatty() and not args.no_color,
-              echo=args.echo, hist=0 if args.no_history else args.history)
+              echo=args.echo, hist=0 if args.no_history else args.history,
+              notes=not args.device_only, tags=not args.device_only)
     if tty_in:
         print("mpuart: attached as %s, Ctrl-] to quit\r" % args.name)
     old = None
@@ -770,7 +773,7 @@ def cmd_attach(args):
 
 def cmd_send(args):
     s = connect(pick(args.target, "send"))
-    say_hello(s, args.name, color=0, hist=0, notes=0)
+    say_hello(s, args.name, color=0, hist=0, notes=0, tags=0)
     payload = args.text.encode().decode("unicode_escape").encode("latin-1")
     if not args.no_newline:
         payload += EOL[args.eol]
@@ -887,6 +890,8 @@ def main():
                    help="replay at most N lines, less than the daemon holds")
     a.add_argument("--no-history", action="store_true")
     a.add_argument("--no-color", action="store_true")
+    a.add_argument("--device-only", action="store_true",
+                   help="device bytes and nothing else, for a binary protocol")
     a.set_defaults(fn=cmd_attach)
 
     a = sub.add_parser("send", help="write one line, print what comes back")

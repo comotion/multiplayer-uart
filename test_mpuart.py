@@ -267,6 +267,34 @@ def check_history_limit():
         r.stop()
 
 
+def check_device_only(r):
+    """A binary stream needs the device bytes and nothing mpuart adds to them."""
+    quiet = r.client("quiet", notes=0, tags=0)
+    loud = r.client("loud")
+    drain(quiet); drain(loud)
+    typer = r.client("typer2")
+    typer.sendall(b"hello\r\n")
+    time.sleep(0.6)
+    quiet_saw, loud_saw = drain(quiet), drain(loud)
+    check("a device-only client is not told what the others type",
+          b"[typer2]" not in quiet_saw, quiet_saw)
+    check("and is not told who came or went", b"--" not in quiet_saw, quiet_saw)
+    check("but it still gets what the device said", b"got hello" in quiet_saw, quiet_saw)
+    check("while everyone else is told both",
+          b"[typer2] hello" in loud_saw and b"typer2 attached" in loud_saw, loud_saw)
+
+    p = subprocess.Popen([MPUART, "attach", r.a, "-r", "-n", "cli", "--device-only"],
+                         env=r.env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE)
+    time.sleep(0.8)
+    typer.sendall(b"again\r\n")
+    time.sleep(0.8)
+    p.terminate()
+    out = p.communicate(timeout=5)[0]
+    check("--device-only does the same from the command line",
+          b"got again" in out and b"[typer2]" not in out and b"-- " not in out, out)
+    quiet.close(); loud.close(); typer.close()
+
+
 def check_eol(r):
     """Enter is one line ending on the wire and one tag on the screen."""
     watcher = r.client("watcher")
@@ -409,6 +437,7 @@ def main():
         check_terminal(r)
         check_history(r)
         check_eol(r)
+        check_device_only(r)
         check_picking(r)
         check_naming(r)
         check_list(r)
