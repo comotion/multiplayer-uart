@@ -399,6 +399,8 @@ class Server:
     def open_dev(self):
         import serial
         self.next_open = time.time() + REOPEN
+        if self.args.follow and not os.path.exists(self.args.device):
+            self.follow()
         try:
             self.ser = serial.Serial(
                 self.args.device, self.args.baud,
@@ -416,6 +418,16 @@ class Server:
         self.sel.register(self.fd, selectors.EVENT_READ, "dev")
         self.log("*", "device open")
         self.notice("%s open" % self.args.device, None)
+
+    def follow(self):
+        """A port we picked ourselves moves to whatever is plugged in instead."""
+        ports = system_ports()
+        if len(ports) != 1:
+            return
+        self.args.device = ports[0][0]
+        self.what = describe(self.args.device)
+        self.log("*", "following %s" % self.args.device)
+        self.notice("now on %s" % self.args.device, None)
 
     def close_dev(self, why):
         if self.fd < 0:
@@ -616,6 +628,7 @@ class Server:
 
 
 def cmd_serve(args):
+    args.follow = args.follow or not args.device
     if not args.device:
         ports = system_ports()
         if not ports:
@@ -872,6 +885,8 @@ def main():
     a.add_argument("--xonxoff", action="store_true")
     a.add_argument("--no-exclusive", action="store_true",
                    help="do not claim the port with TIOCEXCL")
+    a.add_argument("--follow", action="store_true",
+                   help="if a named device goes away, move to the only port left")
     a.add_argument("-v", "--verbose", action="store_true")
     a.set_defaults(fn=cmd_serve)
 

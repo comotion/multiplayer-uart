@@ -15,7 +15,9 @@ Once per port. It keeps the port until you stop it:
     mpuart serve ttyUSB0 115200   # or name one. 115200 is the default
 
 With no device it takes the only serial port there is, by its
-`/dev/serial/by-id` name, which survives a replug. With several it prints them
+`/dev/serial/by-id` name, which survives a replug. If that device goes away and
+a different one is the only port left, it moves to that one. A named device
+does this only with `--follow`. With several it prints them
 and waits for you to pick:
 
     mpuart: 2 serial ports, name one:
@@ -92,6 +94,7 @@ came and went:
     --mode 660         socket and log permissions. Default 666
     --rtscts --xonxoff flow control
     --no-exclusive     do not claim the port with TIOCEXCL
+    --follow           if a named device goes away, move to the only port left
 
 `SIGHUP` reopens the logs, for logrotate.
 

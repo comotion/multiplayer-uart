@@ -119,6 +119,19 @@ def check_discovery():
           and "ttyUSB1" in menu, menu)
 
 
+def check_following():
+    import argparse
+    m = load_mpuart()
+    args = argparse.Namespace(device="/dev/gone", follow=True, log=None, raw_log=None)
+    srv = m.Server(args)
+    m.system_ports = lambda: [("/dev/a", "/dev/null", "A"), ("/dev/b", "/dev/null", "B")]
+    srv.follow()
+    check("with two ports to choose from, it keeps waiting", args.device == "/dev/gone")
+    m.system_ports = lambda: [("/dev/new", "/dev/null", "New")]
+    srv.follow()
+    check("with one port left, it follows that one", args.device == "/dev/new", args.device)
+
+
 def check_list(r):
     """list reports what the daemon is, not just that it exists."""
     watcher = r.client("nosy")
@@ -458,6 +471,7 @@ def main():
 
     check_history_limit()
     check_discovery()
+    check_following()
 
     print("\n%d checks, %d failed" % (ran, len(fails)))
     return 1 if fails else 0
